@@ -10,6 +10,10 @@ builds:
     goarch:
       - arm64
       - amd64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
   - id: "filebeat"
     dir: "filebeat"
     main: ./filebeat.go
@@ -18,6 +22,10 @@ builds:
     goarch:
       - arm64
       - amd64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
   - id: "heartbeat"
     dir: "heartbeat"
     main: ./heartbeat.go
@@ -26,6 +34,10 @@ builds:
     goarch:
       - arm64
       - amd64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
   - id: "metricbeat"
     dir: "metricbeat"
     main: ./metricbeat.go
@@ -34,6 +46,10 @@ builds:
     goarch:
       - arm64
       - amd64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
   - id: "winlogbeat"
     env:
       - CGO_ENABLED=0
@@ -44,6 +60,10 @@ builds:
     goarch:
       - arm64
       - amd64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
 archives:
   - id: "auditbeat"
     builds:
