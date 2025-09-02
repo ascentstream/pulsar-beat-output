@@ -1,10 +1,19 @@
-FROM elastic/filebeat:7.17.5
+FROM alpine:3.21 AS dist
 
-COPY dist/filebeat_linux_amd64_v1/beat /usr/share/filebeat/filebeat
+COPY dist /app-dist/
 
-USER root
+RUN arch=$(uname -m) && \
+    if [ "$arch" = "x86_64" ]; then \
+        DIST_ARCH=linux-amd64; \
+    elif [ "$arch" = "aarch64" ]; then \
+        DIST_ARCH=linux-arm64; \
+    else \
+        echo "Unsupported architecture: $arch" && \
+        exit 1; \
+    fi && \
+    mkdir /dist && \
+    tar -xvf /app-dist/*$DIST_ARCH.tar.gz -C  /dist
 
-RUN mkdir -p /usr/share/filebeat/config /usr/share/filebeat/secret && \
-    chown -R filebeat:filebeat /usr/share/filebeat
+FROM docker.elastic.co/beats/filebeat-oss:9.1.3
 
-USER filebeat
+COPY --from=dist /dist/filebeat /usr/share/filebeat/filebeat

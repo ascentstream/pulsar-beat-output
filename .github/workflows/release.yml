@@ -5,52 +5,50 @@ on:
     tags:
       - '*'
 
-env:
-  GOPRIVATE: github.com/streamnative
-
 jobs:
-  goreleaser:
-    runs-on: ubuntu-20.04
+  publish-dist:
+    runs-on: ubuntu-24.04
+    env:
+      GO_VERSION: '1.24'
+      GORELEASER_VERSION: '~> v2'
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.21.11
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: latest
-          args: release --clean
+          version: ${{ env.GORELEASER_VERSION }}
+          args: release
         env:
-          GITHUB_TOKEN: ${{ secrets.SNBOT_GITHUB_TOKEN }}
-          GOPATH: /home/runner/work/pulsar-beat-output/pulsar-beat-output/go
+          GITHUB_TOKEN: ${{ secrets.ASCENTSTREAM_GITHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
+  publish-image:
+    needs: publish-dist
+    runs-on: ubuntu-24.04
+    steps:
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Docker meta for filebeat
-        id: docker_meta_filebeat
-        uses: crazy-max/ghaction-docker-meta@v1
-        with:
-          images: |
-            streamnative/filebeat
-
-      - name: Build and push beat image
-        uses: docker/build-push-action@v2
+          username: ${{ secrets.ASCENTSTREAM_DOCKER_USERNAME }}
+          password: ${{ secrets.ASCENTSTREAM_DOCKER_PASSWORD }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v4
+      - name: Download GitHub Release
+        run: gh release download "$GITHUB_REF_NAME" --pattern "*-linux-*" --repo "$GITHUB_REPOSITORY" --dir dist
+        env:
+          GH_TOKEN: ${{ secrets.ASCENTSTREAM_GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./filebeat/Dockerfile
           push: true
-          tags: ${{ steps.docker_meta_filebeat.outputs.tags }}
-          labels: ${{ steps.docker_meta_filebeat.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          tags: ascentstream/filebeat:${{ github.ref_name }}
